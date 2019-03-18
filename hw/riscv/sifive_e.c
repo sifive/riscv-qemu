@@ -71,7 +71,7 @@ static const struct MemmapEntry {
     [SIFIVE_E_QSPI2] =    { 0x10034000,     0x1000 },
     [SIFIVE_E_PWM2] =     { 0x10035000,     0x1000 },
     [SIFIVE_E_XIP] =      { 0x20000000, 0x20000000 },
-    [SIFIVE_E_DTIM] =     { 0x80000000,     0x4000 }
+    [SIFIVE_E_DTIM] =     { 0x80000000,    0x10000 }
 };
 
 static target_ulong load_kernel(const char *kernel_filename)
