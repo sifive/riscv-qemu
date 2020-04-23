@@ -115,6 +115,7 @@ struct CPURISCVState {
     target_ulong vxrm;
     target_ulong vxsat;
     target_ulong vl;
+    target_ulong vlenb;
     target_ulong vstart;
     target_ulong vtype;
 

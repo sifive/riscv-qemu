@@ -62,6 +62,7 @@
 #define CSR_VXRM            0x00a
 #define CSR_VL              0xc20
 #define CSR_VTYPE           0xc21
+#define CSR_VLENB           0xc22
 
 /* User Timers and Counters */
 #define CSR_CYCLE           0xc00
