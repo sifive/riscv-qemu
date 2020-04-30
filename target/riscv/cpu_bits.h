@@ -431,6 +431,7 @@
 #define SSTATUS_SPIE        0x00000020
 #define SSTATUS_SPP         0x00000100
 #define SSTATUS_FS          0x00006000
+#define SSTATUS_VS          0x00000600
 #define SSTATUS_XS          0x00018000
 #define SSTATUS_PUM         0x00040000 /* until: priv-1.9.1 */
 #define SSTATUS_SUM         0x00040000 /* since: priv-1.10 */
