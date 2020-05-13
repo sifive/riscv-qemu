@@ -363,7 +363,7 @@ static int riscv_gdb_get_vector(CPURISCVState *env, GByteArray *mem_buf, int n)
         int i;
         int cnt = 0;
         for (i = 0; i < env->vlenb; i += 8) {
-            cnt += gdb_get_reg64(mem_buf + i,
+            cnt += gdb_get_reg64(mem_buf + i / 8,
                                  env->vreg[n * RV_VLEN_MAX / 64 + i / 8]);
         }
         return cnt;
