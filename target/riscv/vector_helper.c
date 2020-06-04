@@ -562,7 +562,7 @@ vext_ldff(void *vd, void *v0, target_ulong base,
           CPURISCVState *env, uint32_t desc,
           vext_ldst_elem_fn *ldst_elem,
           clear_fn *clear_elem,
-          int mmuidx, uint32_t esz, uintptr_t ra)
+          uint32_t esz, uintptr_t ra)
 {
     void *host;
     uint32_t i, k, vl = 0;
@@ -585,7 +585,8 @@ vext_ldff(void *vd, void *v0, target_ulong base,
             remain = nf * esz;
             while (remain > 0) {
                 offset = -(addr | TARGET_PAGE_MASK);
-                host = tlb_vaddr_to_host(env, addr, MMU_DATA_LOAD, mmuidx);
+                host = tlb_vaddr_to_host(env, addr, MMU_DATA_LOAD,
+                                         cpu_mmu_index(env, false));
                 if (host) {
 #ifdef CONFIG_USER_ONLY
                     if (page_check_range(addr, nf * esz, PAGE_READ) < 0) {
@@ -633,18 +634,18 @@ ProbeSuccess:
     }
 }
 
-#define GEN_VEXT_LDFF(NAME, ETYPE, MMUIDX, LOAD_FN, CLEAR_FN)         \
-void HELPER(NAME)(void *vd, void *v0, target_ulong base,              \
-                  CPURISCVState *env, uint32_t desc)                  \
-{                                                                     \
-    vext_ldff(vd, v0, base, env, desc, LOAD_FN, CLEAR_FN, MMUIDX,     \
-              sizeof(ETYPE), GETPC());                                \
+#define GEN_VEXT_LDFF(NAME, ETYPE, LOAD_FN, CLEAR_FN)         \
+void HELPER(NAME)(void *vd, void *v0, target_ulong base,      \
+                  CPURISCVState *env, uint32_t desc)          \
+{                                                             \
+    vext_ldff(vd, v0, base, env, desc, LOAD_FN, CLEAR_FN,     \
+              sizeof(ETYPE), GETPC());                        \
 }
 
-GEN_VEXT_LDFF(vle8ff_v,  int8_t,  MO_SB,   lde_b, clearb)
-GEN_VEXT_LDFF(vle16ff_v, int16_t, MO_LESW, lde_h, clearh)
-GEN_VEXT_LDFF(vle32ff_v, int32_t, MO_LESL, lde_w, clearl)
-GEN_VEXT_LDFF(vle64ff_v, int64_t, MO_LEQ,  lde_d, clearq)
+GEN_VEXT_LDFF(vle8ff_v,  int8_t,  lde_b, clearb)
+GEN_VEXT_LDFF(vle16ff_v, int16_t, lde_h, clearh)
+GEN_VEXT_LDFF(vle32ff_v, int32_t, lde_w, clearl)
+GEN_VEXT_LDFF(vle64ff_v, int64_t, lde_d, clearq)
 
 /*
  *** Vector AMO Operations (Zvamo)

@@ -259,7 +259,7 @@ vsxei16_v     ... 0-1 . ..... ..... 101 ..... 0100111 @r_nfvm
 vsxei32_v     ... 0-1 . ..... ..... 110 ..... 0100111 @r_nfvm
 vsxei64_v     ... 0-1 . ..... ..... 111 ..... 0100111 @r_nfvm
 
-# Unit-stride fault-only-first load insns.
+# Vector unit-stride fault-only-first load insns.
 vle8ff_v      ... 000 . 10000 ..... 000 ..... 0000111 @r2_nfvm
 vle16ff_v     ... 000 . 10000 ..... 101 ..... 0000111 @r2_nfvm
 vle32ff_v     ... 000 . 10000 ..... 110 ..... 0000111 @r2_nfvm
