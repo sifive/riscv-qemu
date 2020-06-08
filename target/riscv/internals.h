@@ -27,7 +27,8 @@ FIELD(VDATA, LMUL, 1, 3)
 FIELD(VDATA, SEW, 4, 3)
 FIELD(VDATA, VTA, 7, 1)
 FIELD(VDATA, VMA, 8, 1)
-FIELD(VDATA, NF, 9, 3)
+/* NF is 4-bits wide as its range is [1..8] */
+FIELD(VDATA, NF, 9, 4)
 FIELD(VDATA, WD, 9, 1)
 
 /* float point classify helpers */
