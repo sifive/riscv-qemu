@@ -167,14 +167,11 @@ static uint32_t vreg_ofs(DisasContext *s, int reg)
  *    cannot increment past 31. (Section 7.8)
  */
 #define VEXT_CHECK_ST_INDEX(s, vd, rs2, nf)         \
-    uint32_t emul_r = s->emul < 1 ? 1 : s->emul;    \
     uint32_t flmul_r = s->flmul < 1 ? 1 : s->flmul; \
     require(s->emul >= 0.125 && s->emul <= 8);      \
     require_align(rs2, s->emul);                    \
     require_align(vd, s->flmul);                    \
-    require((nf * emul_r) <= (NVPR / 4) &&          \
-            (nf * flmul_r) <= (NVPR / 4) &&         \
-            (rs2 + nf * emul_r) <= NVPR &&          \
+    require((nf * flmul_r) <= (NVPR / 4) &&         \
             (vd + nf * flmul_r) <= NVPR);
 
 /* Vector indexed, indexed segment load check function */
@@ -600,7 +597,6 @@ static bool ld_index_op(DisasContext *s, arg_rnfvm *a, uint8_t seq)
 static bool ld_index_check(DisasContext *s, arg_rnfvm* a)
 {
     REQUIRE_RVV;
-    require(a->nf == 1);
     VEXT_CHECK_ISA_ILL(s);
     VEXT_CHECK_LD_INDEX(s, a->rd, a->rs2, a->nf, a->vm);
     return true;
@@ -652,7 +648,6 @@ static bool st_index_op(DisasContext *s, arg_rnfvm *a, uint8_t seq)
 static bool st_index_check(DisasContext *s, arg_rnfvm* a)
 {
     REQUIRE_RVV;
-    require(a->nf == 1);
     VEXT_CHECK_ISA_ILL(s);
     VEXT_CHECK_ST_INDEX(s, a->rd, a->rs2, a->nf);
     return true;
