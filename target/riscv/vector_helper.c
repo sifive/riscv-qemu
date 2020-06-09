@@ -675,7 +675,6 @@ vext_ldst_whole(void *vd, target_ulong base, CPURISCVState *env, uint32_t desc,
     uint32_t i, k;
     uint32_t nf = vext_nf(desc);
     uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
-    uint32_t vta = vext_vta(desc);
 
     /* probe every access */
     probe_pages(env, base, env->vlenb * nf * esz, ra, access_type);
