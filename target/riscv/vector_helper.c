@@ -128,6 +128,23 @@ static inline uint32_t vext_vma(uint32_t desc)
 }
 
 /*
+ * Get number of elements per vector register.
+ */
+static inline uint32_t vext_elts_per_reg(uint32_t desc, uint32_t esz)
+{
+    /* As simd_desc support at most 256, the max vlen is 512 bits,
+     * so vlen in bytes (vlenb) is encoded as maxsz.
+     */
+    uint32_t vlenb = simd_maxsz(desc);
+    uint32_t eew = esz << 3;
+    uint32_t sew = vext_sew(desc);
+    float flmul = vext_vflmul(desc);
+    float emul = (float)eew / sew * flmul;
+    uint32_t emul_r = emul < 1 ? 1 : emul;
+    return vlenb * emul_r / esz;
+}
+
+/*
  * Get vector group length in bytes. Its range is [64, 2048].
  *
  * As simd_desc support at most 256, the max vlen is 512 bits.
@@ -294,7 +311,7 @@ vext_ldst_stride(void *vd, void *v0, target_ulong base,
 {
     uint32_t i, k;
     uint32_t nf = vext_nf(desc);
-    uint32_t vlmax = vext_maxsz(desc) / esz;
+    uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
     uint32_t vta = vext_vta(desc);
 
     /* probe every access*/
@@ -312,15 +329,15 @@ vext_ldst_stride(void *vd, void *v0, target_ulong base,
         }
         while (k < nf) {
             target_ulong addr = base + stride * i + k * esz;
-            ldst_elem(env, addr, i + k * vlmax, vd, ra);
+            ldst_elem(env, addr, i + k * elts_per_reg, vd, ra);
             k++;
         }
     }
     /* clear tail elements */
     if (clear_elem) {
         for (k = 0; k < nf; k++) {
-            clear_elem(vd, vta, env->vl + k * vlmax,
-                       env->vl * esz, vlmax * esz);
+            clear_elem(vd, vta, env->vl + k * elts_per_reg,
+                       env->vl * esz, elts_per_reg * esz);
         }
     }
 }
@@ -369,7 +386,7 @@ vext_ldst_us(void *vd, target_ulong base, CPURISCVState *env, uint32_t desc,
 {
     uint32_t i, k;
     uint32_t nf = vext_nf(desc);
-    uint32_t vlmax = vext_maxsz(desc) / esz;
+    uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
     uint32_t vta = vext_vta(desc);
 
     /* probe every access */
@@ -379,15 +396,15 @@ vext_ldst_us(void *vd, target_ulong base, CPURISCVState *env, uint32_t desc,
         k = 0;
         while (k < nf) {
             target_ulong addr = base + (i * nf + k) * esz;
-            ldst_elem(env, addr, i + k * vlmax, vd, ra);
+            ldst_elem(env, addr, i + k * elts_per_reg, vd, ra);
             k++;
         }
     }
     /* clear tail elements */
     if (clear_elem) {
         for (k = 0; k < nf; k++) {
-            clear_elem(vd, vta, env->vl + k * vlmax,
-                       env->vl * esz, vlmax * esz);
+            clear_elem(vd, vta, env->vl + k * elts_per_reg,
+                       env->vl * esz, elts_per_reg * esz);
         }
     }
 }
@@ -470,7 +487,7 @@ vext_ldst_index(void *vd, void *v0, target_ulong base,
     uint32_t i, k;
     uint32_t nf = vext_nf(desc);
     uint32_t vm = vext_vm(desc);
-    uint32_t vlmax = vext_maxsz(desc) / esz;
+    uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
     uint32_t vta = vext_vta(desc);
 
     /* probe every access*/
@@ -489,15 +506,15 @@ vext_ldst_index(void *vd, void *v0, target_ulong base,
         }
         while (k < nf) {
             abi_ptr addr = get_index_addr(base, i, vs2) + k * esz;
-            ldst_elem(env, addr, i + k * vlmax, vd, ra);
+            ldst_elem(env, addr, i + k * elts_per_reg, vd, ra);
             k++;
         }
     }
     /* clear tail elements */
     if (clear_elem) {
         for (k = 0; k < nf; k++) {
-            clear_elem(vd, vta, env->vl + k * vlmax,
-                       env->vl * esz, vlmax * esz);
+            clear_elem(vd, vta, env->vl + k * elts_per_reg,
+                       env->vl * esz, elts_per_reg * esz);
         }
     }
 }
@@ -568,7 +585,7 @@ vext_ldff(void *vd, void *v0, target_ulong base,
     uint32_t i, k, vl = 0;
     uint32_t nf = vext_nf(desc);
     uint32_t vm = vext_vm(desc);
-    uint32_t vlmax = vext_maxsz(desc) / esz;
+    uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
     uint32_t vta = vext_vta(desc);
     target_ulong addr, offset, remain;
 
@@ -620,7 +637,7 @@ ProbeSuccess:
         }
         while (k < nf) {
             target_ulong addr = base + (i * nf + k) * esz;
-            ldst_elem(env, addr, i + k * vlmax, vd, ra);
+            ldst_elem(env, addr, i + k * elts_per_reg, vd, ra);
             k++;
         }
     }
@@ -629,8 +646,8 @@ ProbeSuccess:
         return;
     }
     for (k = 0; k < nf; k++) {
-        clear_elem(vd, vta, env->vl + k * vlmax,
-                   env->vl * esz, vlmax * esz);
+        clear_elem(vd, vta, env->vl + k * elts_per_reg,
+                   env->vl * esz, elts_per_reg * esz);
     }
 }
 
@@ -657,7 +674,7 @@ vext_ldst_whole(void *vd, target_ulong base, CPURISCVState *env, uint32_t desc,
 {
     uint32_t i, k;
     uint32_t nf = vext_nf(desc);
-    uint32_t vlmax = vext_maxsz(desc) / esz;
+    uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
     uint32_t vta = vext_vta(desc);
 
     /* probe every access */
@@ -668,7 +685,7 @@ vext_ldst_whole(void *vd, target_ulong base, CPURISCVState *env, uint32_t desc,
         k = 0;
         while (k < nf) {
             target_ulong addr = base + (i * nf + k) * esz;
-            ldst_elem(env, addr, i + k * vlmax, vd, ra);
+            ldst_elem(env, addr, i + k * elts_per_reg, vd, ra);
             k++;
         }
     }
@@ -811,7 +828,7 @@ vext_amo_noatomic(void *vs3, void *v0, target_ulong base,
     target_long addr;
     uint32_t wd = vext_wd(desc);
     uint32_t vm = vext_vm(desc);
-    uint32_t vlmax = vext_maxsz(desc) / esz;
+    uint32_t elts_per_reg = vext_elts_per_reg(desc, esz);
     uint32_t vta = vext_vta(desc);
 
     for (i = 0; i < env->vl; i++) {
@@ -828,7 +845,7 @@ vext_amo_noatomic(void *vs3, void *v0, target_ulong base,
         addr = get_index_addr(base, i, vs2);
         noatomic_op(vs3, addr, wd, i, env, ra);
     }
-    clear_elem(vs3, vta, env->vl, env->vl * esz, vlmax * esz);
+    clear_elem(vs3, vta, env->vl, env->vl * esz, elts_per_reg * esz);
 }
 
 #define GEN_VEXT_AMO(NAME, ETYPE, INDEX_FN, CLEAR_FN)           \
