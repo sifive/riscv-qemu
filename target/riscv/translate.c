@@ -647,6 +647,25 @@ static bool gen_arith_imm_tl(DisasContext *ctx, arg_i *a,
     return true;
 }
 
+static bool gen_arith_shamt_tl(DisasContext *ctx, arg_shift *a,
+                               void (*func)(TCGv, TCGv, TCGv))
+{
+    TCGv source1, source2;
+    source1 = tcg_temp_new();
+    source2 = tcg_temp_new();
+
+    gen_get_gpr(source1, a->rs1);
+    tcg_gen_movi_tl(source2, a->shamt);
+
+    (*func)(source1, source1, source2);
+
+    gen_set_gpr(a->rd, source1);
+    tcg_temp_free(source1);
+    tcg_temp_free(source2);
+    return true;
+}
+
+
 #ifdef TARGET_RISCV64
 static void gen_addw(TCGv ret, TCGv arg1, TCGv arg2)
 {
@@ -654,10 +673,22 @@ static void gen_addw(TCGv ret, TCGv arg1, TCGv arg2)
     tcg_gen_ext32s_tl(ret, ret);
 }
 
+static void gen_addwu(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    tcg_gen_add_tl(ret, arg1, arg2);
+    tcg_gen_ext32u_tl(ret, ret);
+}
+
 static void gen_subw(TCGv ret, TCGv arg1, TCGv arg2)
 {
     tcg_gen_sub_tl(ret, arg1, arg2);
     tcg_gen_ext32s_tl(ret, ret);
+}
+
+static void gen_subwu(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    tcg_gen_sub_tl(ret, arg1, arg2);
+    tcg_gen_ext32u_tl(ret, ret);
 }
 
 static void gen_mulw(TCGv ret, TCGv arg1, TCGv arg2)
@@ -710,6 +741,528 @@ static bool gen_arith_div_uw(DisasContext *ctx, arg_r *a,
 
 #endif
 
+static void gen_andn(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_not_tl(t, arg2);
+    tcg_gen_and_tl(ret, arg1, t);
+
+    tcg_temp_free(t);
+}
+
+static void gen_orn(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_not_tl(t, arg2);
+    tcg_gen_or_tl(ret, arg1, t);
+
+    tcg_temp_free(t);
+}
+
+static void gen_xnor(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_not_tl(t, arg2);
+    tcg_gen_xor_tl(ret, arg1, t);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sh1add(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_shli_tl(t, arg1, 1);
+    tcg_gen_add_tl(ret, t, arg2);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sh2add(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_shli_tl(t, arg1, 2);
+    tcg_gen_add_tl(ret, t, arg2);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sh3add(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_shli_tl(t, arg1, 3);
+    tcg_gen_add_tl(ret, t, arg2);
+
+    tcg_temp_free(t);
+}
+
+static void gen_pack(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv lower, higher;
+    lower = tcg_temp_new();
+    higher = tcg_temp_new();
+
+#ifdef TARGET_RISCV64
+    tcg_gen_ext32u_tl(lower, arg1);
+    tcg_gen_shli_tl(higher, arg2, 32);
+#else
+    tcg_gen_ext16u_tl(lower, arg1);
+    tcg_gen_shli_tl(higher, arg2, 16);
+#endif
+
+    tcg_gen_or_tl(ret, higher, lower);
+
+    tcg_temp_free(lower);
+    tcg_temp_free(higher);
+}
+
+static void gen_packu(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv lower, higher;
+    lower = tcg_temp_new();
+    higher = tcg_temp_new();
+
+#ifdef TARGET_RISCV64
+    tcg_gen_shri_tl(lower, arg1, 32);
+    tcg_gen_shri_tl(higher, arg2, 32);
+    tcg_gen_shli_tl(higher, higher, 32);
+#else
+    tcg_gen_shri_tl(lower, arg1, 16);
+    tcg_gen_shri_tl(higher, arg2, 16);
+    tcg_gen_shli_tl(higher, higher, 16);
+#endif
+
+    tcg_gen_or_tl(ret, higher, lower);
+
+    tcg_temp_free(lower);
+    tcg_temp_free(higher);
+}
+
+static void gen_packh(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv lower, higher;
+    lower = tcg_temp_new();
+    higher = tcg_temp_new();
+
+    tcg_gen_ext8u_tl(lower, arg1);
+    tcg_gen_ext8u_tl(higher, arg2);
+    tcg_gen_shli_tl(higher, higher, 8);
+
+    tcg_gen_or_tl(ret, higher, lower);
+
+    tcg_temp_free(lower);
+    tcg_temp_free(higher);
+}
+
+static void gen_sbop_shamt(TCGv ret, TCGv shamt)
+{
+#ifdef TARGET_RISCV64
+    tcg_gen_andi_tl(ret, shamt, 64 - 1);
+#else
+    tcg_gen_andi_tl(ret, shamt, 32 - 1);
+#endif
+}
+
+static void gen_sbop_common(TCGv ret, TCGv shamt)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    gen_sbop_shamt(ret, shamt);
+
+    tcg_gen_movi_tl(t, 1);
+    tcg_gen_shl_tl(ret, t, ret);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sbset(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv mask;
+    mask = tcg_temp_new();
+
+    gen_sbop_common(mask, arg2);
+
+    tcg_gen_or_tl(ret, arg1, mask);
+
+    tcg_temp_free(mask);
+}
+
+static void gen_sbclr(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv mask;
+    mask = tcg_temp_new();
+
+    gen_sbop_common(mask, arg2);
+
+    tcg_gen_not_tl(mask, mask);
+    tcg_gen_and_tl(ret, arg1, mask);
+
+    tcg_temp_free(mask);
+}
+
+static void gen_sbinv(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv mask;
+    mask = tcg_temp_new();
+
+    gen_sbop_common(mask, arg2);
+
+    tcg_gen_xor_tl(ret, arg1, mask);
+
+    tcg_temp_free(mask);
+}
+
+static void gen_sbext(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt;
+    shamt = tcg_temp_new();
+
+    gen_sbop_shamt(shamt, arg2);
+    tcg_gen_shr_tl(ret, arg1, shamt);
+
+    tcg_gen_andi_tl(ret, ret, 1);
+
+    tcg_temp_free(shamt);
+}
+
+static void gen_slo(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt, t;
+    shamt = tcg_temp_new();
+    t = tcg_temp_new();
+
+    gen_sbop_shamt(shamt, arg2);
+
+    tcg_gen_not_tl(t, arg1);
+    tcg_gen_shl_tl(t, t, arg2);
+    tcg_gen_not_tl(ret, t);
+
+    tcg_temp_free(shamt);
+    tcg_temp_free(t);
+}
+
+static void gen_sro(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt, t;
+    shamt = tcg_temp_new();
+    t = tcg_temp_new();
+
+    gen_sbop_shamt(shamt, arg2);
+
+    tcg_gen_not_tl(t, arg1);
+    tcg_gen_shr_tl(t, t, arg2);
+    tcg_gen_not_tl(ret, t);
+
+    tcg_temp_free(shamt);
+    tcg_temp_free(t);
+}
+
+static bool gen_crc32(arg_r2 *a, target_long nbits)
+{
+    TCGv source, nbitsv;
+    source = tcg_temp_new();
+    nbitsv = tcg_temp_new();
+
+    gen_get_gpr(source, a->rs1);
+
+    tcg_gen_movi_tl(nbitsv, nbits);
+    gen_helper_crc32(source, source, nbitsv);
+
+    gen_set_gpr(a->rd, source);
+
+    tcg_temp_free(source);
+    tcg_temp_free(nbitsv);
+    return true;
+}
+
+static bool gen_crc32c(arg_r2 *a, target_long nbits)
+{
+    TCGv source, nbitsv;
+    source = tcg_temp_new();
+    nbitsv = tcg_temp_new();
+
+    gen_get_gpr(source, a->rs1);
+
+    tcg_gen_movi_tl(nbitsv, nbits);
+    gen_helper_crc32c(source, source, nbitsv);
+
+    gen_set_gpr(a->rd, source);
+
+    tcg_temp_free(source);
+    tcg_temp_free(nbitsv);
+    return true;
+}
+
+#ifdef TARGET_RISCV64
+static void gen_addu_w(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    tcg_gen_ext32u_tl (arg1, arg1);
+    tcg_gen_add_tl(ret, arg1, arg2);
+}
+
+static void gen_subu_w(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    tcg_gen_ext32u_tl (arg1, arg1);
+    tcg_gen_sub_tl(ret, arg1, arg2);
+}
+
+static void gen_sh1addu_w(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_ext32u_tl (t, arg1);
+    tcg_gen_shli_tl(t, t, 1);
+    tcg_gen_add_tl(ret, t, arg2);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sh2addu_w(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_ext32u_tl (t, arg1);
+    tcg_gen_shli_tl(t, t, 2);
+    tcg_gen_add_tl(ret, t, arg2);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sh3addu_w(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    tcg_gen_ext32u_tl (t, arg1);
+    tcg_gen_shli_tl(t, t, 3);
+    tcg_gen_add_tl(ret, t, arg2);
+
+    tcg_temp_free(t);
+}
+
+static void gen_packw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv lower, higher;
+    lower = tcg_temp_new();
+    higher = tcg_temp_new();
+
+    tcg_gen_ext16u_tl (lower, arg1);
+    tcg_gen_shli_tl (higher, arg2, 16);
+
+    tcg_gen_or_tl(ret, higher, lower);
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(lower);
+    tcg_temp_free(higher);
+}
+
+static void gen_packuw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv lower, higher;
+    lower = tcg_temp_new();
+    higher = tcg_temp_new();
+
+    tcg_gen_shri_tl (lower, arg1, 16);
+    tcg_gen_shri_tl (higher, arg2, 16);
+    tcg_gen_shli_tl (higher, higher, 16);
+
+    tcg_gen_or_tl(ret, higher, lower);
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(lower);
+    tcg_temp_free(higher);
+}
+
+static void gen_sbopw_shamt(TCGv ret, TCGv shamt)
+{
+    tcg_gen_andi_tl(ret, shamt, 32 - 1);
+}
+
+static void gen_sbopw_common(TCGv ret, TCGv shamt)
+{
+    TCGv t;
+    t = tcg_temp_new();
+
+    gen_sbopw_shamt(ret, shamt);
+
+    tcg_gen_movi_tl(t, 1);
+    tcg_gen_shl_tl(ret, t, ret);
+
+    tcg_temp_free(t);
+}
+
+static void gen_sbsetw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv mask;
+    mask = tcg_temp_new();
+
+    gen_sbopw_common(mask, arg2);
+
+    tcg_gen_or_tl(ret, arg1, mask);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(mask);
+}
+
+static void gen_sbclrw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv mask;
+    mask = tcg_temp_new();
+
+    gen_sbopw_common(mask, arg2);
+
+    tcg_gen_not_tl(mask, mask);
+    tcg_gen_and_tl(ret, arg1, mask);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(mask);
+}
+
+static void gen_sbinvw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv mask;
+    mask = tcg_temp_new();
+
+    gen_sbopw_common(mask, arg2);
+
+    tcg_gen_xor_tl(ret, arg1, mask);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(mask);
+}
+
+static void gen_sbextw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt;
+    shamt = tcg_temp_new();
+
+    gen_sbopw_shamt(shamt, arg2);
+    tcg_gen_shr_tl(ret, arg1, shamt);
+
+    tcg_gen_andi_tl(ret, ret, 1);
+
+    tcg_temp_free(shamt);
+}
+
+
+static void gen_slow(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt, t;
+    shamt = tcg_temp_new();
+    t = tcg_temp_new();
+
+    gen_sbopw_shamt(shamt, arg2);
+
+    tcg_gen_ext32u_tl(arg1, arg1);
+
+    tcg_gen_not_tl(t, arg1);
+    tcg_gen_shl_tl(t, t, shamt);
+    tcg_gen_not_tl(ret, t);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(shamt);
+    tcg_temp_free(t);
+}
+
+static void gen_srow(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt, t;
+    shamt = tcg_temp_new();
+    t = tcg_temp_new();
+
+    gen_sbopw_shamt(shamt, arg2);
+
+    tcg_gen_ext32u_tl(arg1, arg1);
+
+    tcg_gen_not_tl(t, arg1);
+    tcg_gen_shr_tl(t, t, shamt);
+    tcg_gen_not_tl(ret, t);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(shamt);
+    tcg_temp_free(t);
+}
+
+static void gen_rorw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt, t;
+    shamt = tcg_temp_new();
+    t = tcg_temp_new();
+
+    gen_sbopw_shamt(shamt, arg2);
+
+    tcg_gen_ext32u_tl(arg1, arg1);
+
+    tcg_gen_rotr_tl(ret, arg1, shamt);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(shamt);
+    tcg_temp_free(t);
+}
+
+static void gen_rolw(TCGv ret, TCGv arg1, TCGv arg2)
+{
+    TCGv shamt, t;
+    shamt = tcg_temp_new();
+    t = tcg_temp_new();
+
+    gen_sbopw_shamt(shamt, arg2);
+
+    tcg_gen_ext32u_tl(arg1, arg1);
+
+    tcg_gen_rotl_tl(ret, arg1, shamt);
+
+    tcg_gen_ext32s_tl(ret, ret);
+
+    tcg_temp_free(shamt);
+    tcg_temp_free(t);
+}
+
+static void gen_pcntw(TCGv ret, TCGv arg1)
+{
+    tcg_gen_ext32u_tl(arg1, arg1);
+    tcg_gen_ctpop_tl(ret, arg1);
+}
+
+static bool gen_cxzw(DisasContext *ctx, arg_r2 *a,
+                     void(*func)(TCGv, TCGv, target_ulong))
+{
+    TCGv source;
+    source = tcg_temp_new();
+
+    gen_get_gpr(source, a->rs1);
+
+    tcg_gen_ext32u_tl(source, source);
+
+    (*func)(source, source, 32);
+
+    gen_set_gpr(a->rd, source);
+    tcg_temp_free(source);
+    return true;
+}
+
+#endif
+
 static bool gen_arith(DisasContext *ctx, arg_r *a,
                       void(*func)(TCGv, TCGv, TCGv))
 {
@@ -746,6 +1299,41 @@ static bool gen_shift(DisasContext *ctx, arg_r *a,
     return true;
 }
 
+static bool gen_unary(DisasContext *ctx, arg_r2 *a,
+                      void(*func)(TCGv, TCGv))
+{
+    TCGv source;
+    source = tcg_temp_new();
+
+    gen_get_gpr(source, a->rs1);
+
+    (*func)(source, source);
+
+    gen_set_gpr(a->rd, source);
+    tcg_temp_free(source);
+    return true;
+}
+
+
+static bool gen_cxz(DisasContext *ctx, arg_r2 *a,
+                    void(*func)(TCGv, TCGv, target_ulong))
+{
+    TCGv source;
+    source = tcg_temp_new();
+
+    gen_get_gpr(source, a->rs1);
+
+#ifdef TARGET_RISCV64
+    (*func)(source, source, 64);
+#else
+    (*func)(source, source, 32);
+#endif
+
+    gen_set_gpr(a->rd, source);
+    tcg_temp_free(source);
+    return true;
+}
+
 /* Include insn module translation function */
 #include "insn_trans/trans_rvi.c.inc"
 #include "insn_trans/trans_rvm.c.inc"
@@ -754,6 +1342,7 @@ static bool gen_shift(DisasContext *ctx, arg_r *a,
 #include "insn_trans/trans_rvd.c.inc"
 #include "insn_trans/trans_rvh.c.inc"
 #include "insn_trans/trans_rvv.c.inc"
+#include "insn_trans/trans_rvb.c.inc"
 #include "insn_trans/trans_privileged.c.inc"
 
 /* Include the auto-generated decoder for 16 bit insn */

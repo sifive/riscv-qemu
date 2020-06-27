@@ -1,0 +1,529 @@
+/*
+ * RISC-V translation routines for the RVB Standard Extension.
+ *
+ * Copyright (c) 2020 Kito Cheng, kito.cheng@sifive.com
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2 or later, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+static bool trans_andn(DisasContext *ctx, arg_andn *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_andn);
+}
+
+static bool trans_orn(DisasContext *ctx, arg_orn *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_orn);
+}
+
+static bool trans_xnor(DisasContext *ctx, arg_xnor *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_xnor);
+}
+
+static bool trans_slo(DisasContext *ctx, arg_slo *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_slo);
+}
+
+static bool trans_sloi(DisasContext *ctx, arg_sloi *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_slo);
+}
+
+static bool trans_sro(DisasContext *ctx, arg_sro *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sro);
+}
+
+static bool trans_sroi(DisasContext *ctx, arg_sroi *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sro);
+}
+
+static bool trans_rol(DisasContext *ctx, arg_rol *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &tcg_gen_rotl_tl);
+}
+
+static bool trans_ror(DisasContext *ctx, arg_ror *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &tcg_gen_rotr_tl);
+}
+
+static bool trans_rori(DisasContext *ctx, arg_rori *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &tcg_gen_rotr_tl);
+}
+
+static bool trans_sbclr(DisasContext *ctx, arg_sbclr *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbclr);
+}
+
+static bool trans_sbclri(DisasContext *ctx, arg_sbclri *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbclr);
+}
+
+static bool trans_sbset(DisasContext *ctx, arg_sbset *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbset);
+}
+
+static bool trans_sbseti(DisasContext *ctx, arg_sbseti *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbset);
+}
+
+static bool trans_sbinv(DisasContext *ctx, arg_sbinv *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbinv);
+}
+
+static bool trans_sbinvi(DisasContext *ctx, arg_sbinvi *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbinv);
+}
+
+static bool trans_sbext(DisasContext *ctx, arg_sbext *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbext);
+}
+
+static bool trans_sbexti(DisasContext *ctx, arg_sbexti *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbext);
+}
+
+static bool trans_gorc(DisasContext *ctx, arg_gorc *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_grev(DisasContext *ctx, arg_grev *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_cmix(DisasContext *ctx, arg_cmix *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_cmov(DisasContext *ctx, arg_cmov *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+#if 0
+static bool trans_fsl(DisasContext *ctx, arg_fsl *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_fsr(DisasContext *ctx, arg_fsr *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+#endif
+static bool trans_clz(DisasContext *ctx, arg_clz *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_cxz(ctx, a, &tcg_gen_clzi_tl);
+}
+
+static bool trans_ctz(DisasContext *ctx, arg_ctz *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_cxz(ctx, a, &tcg_gen_ctzi_tl);
+}
+
+static bool trans_pcnt(DisasContext *ctx, arg_pcnt *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_unary(ctx, a, &tcg_gen_ctpop_tl);
+}
+
+static bool trans_sext_b(DisasContext *ctx, arg_sext_b *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_unary(ctx, a, &tcg_gen_ext8s_tl);
+}
+
+static bool trans_sext_h(DisasContext *ctx, arg_sext_h *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_unary(ctx, a, &tcg_gen_ext16s_tl);
+}
+
+static bool trans_crc32_b(DisasContext *ctx, arg_crc32_b *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32 (a, 8);
+}
+
+static bool trans_crc32_h(DisasContext *ctx, arg_crc32_h *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32 (a, 16);
+}
+
+static bool trans_crc32_w(DisasContext *ctx, arg_crc32_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32 (a, 32);
+}
+
+static bool trans_crc32c_b(DisasContext *ctx, arg_crc32c_b *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32c (a, 8);
+}
+
+static bool trans_crc32c_h(DisasContext *ctx, arg_crc32c_h *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32c (a, 16);
+}
+
+static bool trans_crc32c_w(DisasContext *ctx, arg_crc32c_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32c (a, 32);
+}
+
+static bool trans_sh1add(DisasContext *ctx, arg_sh1add *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sh1add);
+}
+
+static bool trans_sh2add(DisasContext *ctx, arg_sh2add *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sh2add);
+}
+
+static bool trans_sh3add(DisasContext *ctx, arg_sh3add *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sh3add);
+}
+
+static bool trans_clmul(DisasContext *ctx, arg_clmul *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_clmulr(DisasContext *ctx, arg_clmulr *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_clmulh(DisasContext *ctx, arg_clmulh *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_min(DisasContext *ctx, arg_min *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &tcg_gen_smin_tl);
+}
+
+static bool trans_max(DisasContext *ctx, arg_max *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &tcg_gen_smax_tl);
+}
+
+static bool trans_minu(DisasContext *ctx, arg_minu *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &tcg_gen_umin_tl);
+}
+
+static bool trans_maxu(DisasContext *ctx, arg_maxu *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &tcg_gen_umax_tl);
+}
+
+static bool trans_shfl(DisasContext *ctx, arg_shfl *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_unshfl(DisasContext *ctx, arg_unshfl *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return false;
+}
+
+static bool trans_bfp(DisasContext *ctx, arg_bfp *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_helper_bfp);
+}
+
+static bool trans_bext(DisasContext *ctx, arg_bext *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_helper_bext);
+}
+
+static bool trans_bdep(DisasContext *ctx, arg_bdep *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_helper_bdep);
+}
+
+static bool trans_pack(DisasContext *ctx, arg_pack *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_pack);
+}
+
+static bool trans_packu(DisasContext *ctx, arg_packu *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_packu);
+}
+
+static bool trans_packh(DisasContext *ctx, arg_packh *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_packh);
+}
+
+#ifdef TARGET_RISCV64
+
+static bool trans_crc32_d(DisasContext *ctx, arg_crc32_d *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32 (a, 64);
+}
+
+static bool trans_crc32c_d(DisasContext *ctx, arg_crc32c_d *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_crc32c (a, 64);
+}
+
+
+static bool trans_slliu_w(DisasContext *ctx, arg_slliu_w *a)
+{
+    TCGv source1;
+    source1 = tcg_temp_new();
+    gen_get_gpr(source1, a->rs1);
+
+    tcg_gen_ext32u_tl(source1, source1);
+    tcg_gen_shli_tl(source1, source1, a->shamt);
+    gen_set_gpr(a->rd, source1);
+
+    tcg_temp_free(source1);
+    return true;
+}
+
+static bool trans_addu_w(DisasContext *ctx, arg_addu_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_addu_w);
+}
+
+static bool trans_subu_w(DisasContext *ctx, arg_subu_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_subu_w);
+}
+
+static bool trans_clzw(DisasContext *ctx, arg_clzw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_cxzw(ctx, a, &tcg_gen_clzi_tl);
+}
+
+static bool trans_ctzw(DisasContext *ctx, arg_ctzw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_cxzw(ctx, a, &tcg_gen_ctzi_tl);
+}
+
+static bool trans_pcntw(DisasContext *ctx, arg_pcntw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_unary(ctx, a, &gen_pcntw);
+}
+
+static bool trans_sh1addu_w(DisasContext *ctx, arg_sh1addu_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sh1addu_w);
+}
+
+static bool trans_sh2addu_w(DisasContext *ctx, arg_sh2addu_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sh2addu_w);
+}
+
+static bool trans_sh3addu_w(DisasContext *ctx, arg_sh3addu_w *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sh3addu_w);
+}
+
+static bool trans_packw(DisasContext *ctx, arg_packw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_packw);
+}
+
+static bool trans_packuw(DisasContext *ctx, arg_packuw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_packuw);
+}
+
+static bool trans_addwu(DisasContext *ctx, arg_addwu *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_addwu);
+}
+
+static bool trans_addiwu(DisasContext *ctx, arg_addiwu *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_imm_tl(ctx, a, &gen_addwu);
+}
+
+static bool trans_subwu(DisasContext *ctx, arg_subwu *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_subwu);
+}
+
+static bool trans_sbclrw(DisasContext *ctx, arg_sbclrw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbclrw);
+}
+
+static bool trans_sbclriw(DisasContext *ctx, arg_sbclriw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbclrw);
+}
+
+static bool trans_sbsetw(DisasContext *ctx, arg_sbsetw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbsetw);
+}
+
+static bool trans_sbsetiw(DisasContext *ctx, arg_sbsetiw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbsetw);
+}
+
+static bool trans_sbinvw(DisasContext *ctx, arg_sbinvw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbinvw);
+}
+
+static bool trans_sbinviw(DisasContext *ctx, arg_sbinviw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_sbinvw);
+}
+
+static bool trans_sbextw(DisasContext *ctx, arg_sbextw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_sbextw);
+}
+
+static bool trans_slow(DisasContext *ctx, arg_slow *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_slow);
+}
+
+static bool trans_sloiw(DisasContext *ctx, arg_sloiw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_slow);
+}
+
+static bool trans_srow(DisasContext *ctx, arg_srow *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_srow);
+}
+
+static bool trans_sroiw(DisasContext *ctx, arg_sroiw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_srow);
+}
+
+static bool trans_rolw(DisasContext *ctx, arg_rolw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_rolw);
+}
+
+static bool trans_rorw(DisasContext *ctx, arg_rorw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith(ctx, a, &gen_rorw);
+}
+
+static bool trans_roriw(DisasContext *ctx, arg_roriw *a)
+{
+    REQUIRE_EXT(ctx, RVB);
+    return gen_arith_shamt_tl(ctx, a, &gen_rorw);
+}
+
+#endif
